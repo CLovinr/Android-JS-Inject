@@ -57,10 +57,9 @@ class JsBridgeImpl extends JsBinder implements JsBridge
             {
                 fireJava2JsCallback = new Java2JsCallback(webViewRef.get())
                 {
-                    @Override
-                    protected Object callback(Object... values)
+                    @Callback
+                    public void callback()
                     {
-                        super.callback(values);
                         executorService.execute(new Runnable()
                         {
                             @Override
@@ -69,7 +68,6 @@ class JsBridgeImpl extends JsBinder implements JsBridge
                                 onOccur();
                             }
                         });
-                        return null;
                     }
                 };
                 fireJava2JsCallback.setPermanent(true);
@@ -93,13 +91,11 @@ class JsBridgeImpl extends JsBinder implements JsBridge
                 {
                     valueChangeJava2JsCallback = new Java2JsCallback(webViewRef.get())
                     {
-                        @Override
-                        protected Object callback(Object... values)
+                        @Callback
+                        public void callback(JSONObject value)
                         {
-                            super.callback(values);
-                            currentValue = values[0];
+                            currentValue = value.opt("value");
                             doOnchange();
-                            return null;
                         }
                     };
                     setCall.apply(id, name, valueChangeJava2JsCallback);

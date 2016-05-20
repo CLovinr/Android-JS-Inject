@@ -24,9 +24,22 @@ public class WEBViewImpl implements WEBView
     }
 
     @Override
-    public void loadUrl(String url)
+    public void loadUrl(final String url)
     {
-        webView.loadUrl(url);
+        if (isMainThread())
+        {
+            webView.loadUrl(url);
+        } else
+        {
+            webView.post(new Runnable()
+            {
+                @Override
+                public void run()
+                {
+                    webView.loadUrl(url);
+                }
+            });
+        }
     }
 
     @Override

@@ -30,8 +30,7 @@ public class JsCallJava
     private boolean willPrintDebugInfo, searchMoreForObjFun;
 
 
-
-    private static class MethodClass
+    static class MethodClass
     {
         Method method;
         Object object;
@@ -100,11 +99,15 @@ public class JsCallJava
     }
 
 
-    public JsCallJava(boolean willPrintDebugInfo, boolean searchMoreForObjFun, InjectObj... injectObjs)
+    /**
+     * @param willPrintDebugInfo
+     * @param injectObjs
+     */
+    public JsCallJava(boolean willPrintDebugInfo, InjectObj... injectObjs)
     {
         try
         {
-            this.searchMoreForObjFun = searchMoreForObjFun;
+            this.searchMoreForObjFun = true;
             this.willPrintDebugInfo = willPrintDebugInfo;
             methodsMap = new HashMap<>();
             StringBuilder sbuilder = new StringBuilder("javascript:");
@@ -121,11 +124,11 @@ public class JsCallJava
                 tml = tml.replace("\n", "");
             }
 
-            injectOne(sbuilder, new InjectObj("android_js_test", TestJs.class), tml, searchMoreForObjFun);
+            injectOne(sbuilder, new InjectObj("android_js_test", TestJs.class), tml);
 
             for (InjectObj injectObj : injectObjs)
             {
-                injectOne(sbuilder, injectObj, tml, searchMoreForObjFun);
+                injectOne(sbuilder, injectObj, tml);
             }
 
 
@@ -174,8 +177,7 @@ public class JsCallJava
         }
     }
 
-    private void injectOne(StringBuilder sbuilder, InjectObj injectObj, String tml,
-            boolean searchMoreForObjFun) throws Exception
+    private void injectOne(StringBuilder sbuilder, InjectObj injectObj, String tml) throws Exception
     {
 
 
@@ -250,7 +252,7 @@ public class JsCallJava
             if (method
                     .getModifiers() != Modifier.PUBLIC || Modifier
                     .isStatic(method.getModifiers()) || (sign = genJavaMethodSign(
-                    method)) == null)
+                    method, willPrintDebugInfo, true)) == null)
             {
                 continue;
             }
@@ -259,12 +261,12 @@ public class JsCallJava
         }
     }
 
-    private String genJavaMethodSign(Method method)
+    static String genJavaMethodSign(Method method, boolean willPrintDebugInfo, boolean needWEBViewAndMethodName)
     {
-        String sign = method.getName();
+        String sign = needWEBViewAndMethodName ? method.getName() : "";
         Class[] argsTypes = method.getParameterTypes();
         int len = argsTypes.length;
-        if (len < 1 || !argsTypes[0].isAssignableFrom(WEBView.class))
+        if (needWEBViewAndMethodName && (len < 1 || !argsTypes[0].isAssignableFrom(WEBView.class)))
         {
             if (willPrintDebugInfo)
             {
@@ -272,7 +274,7 @@ public class JsCallJava
             }
             return null;
         }
-        for (int k = 1; k < len; k++)
+        for (int k = needWEBViewAndMethodName ? 1 : 0; k < len; k++)
         {
             Class cls = argsTypes[k];
             if (cls == String.class)
@@ -336,164 +338,191 @@ public class JsCallJava
 
     public String call(WEBView webView, String jsonStr)
     {
-        if (!TextUtils.isEmpty(jsonStr))
-        {
-            try
-            {
-                JSONObject callJson = new JSONObject(jsonStr);
-
-                String namespace = callJson.getString("namespace");
-                boolean isJavaCallback = callJson.getBoolean("isJavaCallback");
-
-                String methodName = callJson.getString("method");
-                JSONArray argsTypes = callJson.getJSONArray("types");
-                JSONArray argsVals = callJson.getJSONArray("args");
-
-                if (isJavaCallback)
-                {
-
-
-                    String callbackId = argsVals.getString(0);
-                    String javaCallbackType = argsVals.getString(1);
-                    int startIndex = 2;
-
-                    if ("destroy".equals(javaCallbackType))
-                    {
-                        Java2JsCallback.remove(callbackId);
-                        return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 200, null);
-                    } else
-                    {
-
-                        Java2JsCallback java2JsCallback = Java2JsCallback.get(callbackId);
-
-                        if (java2JsCallback == null)
-                        {
-                            return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 500,
-                                    "not found java2JsCallback(id=" + callbackId + ")");
-                        }
-
-
-                        switch (javaCallbackType)
-                        {
-                            case "setPermanent":
-                            {
-                                boolean isPermanent = argsVals.getBoolean(startIndex);
-                                java2JsCallback.setPermanent(isPermanent);
-                                return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 200, null);
-                            }
-
-                            case "callback":
-                            {
-                                Object[] args = new Object[argsVals.length() - startIndex + 1];
-                                args[0] = webView;
-                                for (int i = startIndex - 1; i < args.length; i++)
-                                {
-                                    args[i] = argsVals.get(i + 1);
-                                }
-
-                                return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 200,
-                                        java2JsCallback.callback(args));
-                            }
-                            default:
-
-                                return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 500,
-                                        "unknown javaCallbackType(" + javaCallbackType + ")");
-                        }
-
-                    }
-                }
-
-                String sign = methodName;
-                int len = argsTypes.length();
-                Object[] values = new Object[len + 1];
-                int numIndex = 0;
-                String currType;
-
-                values[0] = webView;
-
-                for (int k = 0; k < len; k++)
-                {
-                    currType = argsTypes.optString(k);
-                    if ("string".equals(currType))
-                    {
-                        sign += "_S";
-                        values[k + 1] = argsVals.isNull(k) ? null : argsVals.getString(k);
-                    } else if ("number".equals(currType))
-                    {
-                        sign += "_N";
-                        numIndex = numIndex * 10 + k + 1;
-                    } else if ("boolean".equals(currType))
-                    {
-                        sign += "_B";
-                        values[k + 1] = argsVals.getBoolean(k);
-                    } else if ("object".equals(currType))
-                    {
-                        sign += "_O";
-                        JSONObject json = null;
-                        if (!argsVals.isNull(k))
-                        {
-                            json = argsVals.getJSONObject(k);
-                            json = parseObjFun(webView, namespace, json);
-                        }
-                        values[k + 1] = json;
-                    } else if ("function".equals(currType))
-                    {
-                        sign += "_F";
-                        values[k + 1] = new JsCallback(webView, namespace, argsVals.getString(k));
-                    } else
-                    {
-                        sign += "_P";
-                    }
-                }
-
-                MethodClass currMethod = methodsMap.get(namespace + "." + sign);
-
-                // 方法匹配失败
-                if (currMethod == null)
-                {
-                    return getReturn(jsonStr, null, 500,
-                            "not found method(" + namespace + "." + sign + ") with valid parameters");
-                }
-                // 数字类型细分匹配
-                if (numIndex > 0)
-                {
-                    Class[] methodTypes = currMethod.method.getParameterTypes();
-                    int currIndex;
-                    Class currCls;
-                    while (numIndex > 0)
-                    {
-                        currIndex = numIndex - numIndex / 10 * 10;
-                        currCls = methodTypes[currIndex];
-                        if (currCls == int.class)
-                        {
-                            values[currIndex] = argsVals.getInt(currIndex - 1);
-                        } else if (currCls == long.class)
-                        {
-                            //WARN: argsJson.getLong(k + defValue) will return a bigger incorrect number
-                            values[currIndex] = Long.parseLong(argsVals.getString(currIndex - 1));
-                        } else
-                        {
-                            values[currIndex] = argsVals.getDouble(currIndex - 1);
-                        }
-                        numIndex /= 10;
-                    }
-                }
-
-                return getReturn(jsonStr, namespace + "." + sign, 200,
-                        currMethod.method.invoke(currMethod.object, values));
-            } catch (Exception e)
-            {
-                //优先返回详细的错误信息
-                if (e.getCause() != null)
-                {
-                    return getReturn(jsonStr, null, 500, "method execute error:" + e.getCause().getMessage());
-                }
-                return getReturn(jsonStr, null, 500, "method execute error:" + e.getMessage());
-            }
-        } else
+        if (TextUtils.isEmpty(jsonStr))
         {
             return getReturn(jsonStr, null, 500, "call data empty");
         }
+        try
+        {
+            JSONObject callJson = new JSONObject(jsonStr);
+
+            String namespace = callJson.getString("namespace");
+            boolean isJavaCallback = callJson.getBoolean("isJavaCallback");
+
+            String methodName = callJson.getString("method");
+            JSONArray argsTypes = callJson.getJSONArray("types");
+            JSONArray argsVals = callJson.getJSONArray("args");
+
+            Object[] values;
+            DealArgsTemp dealArgsTemp;
+            MethodClass currMethod;
+            if (isJavaCallback)
+            {
+                String callbackId = argsVals.getString(0);
+                String javaCallbackType = argsVals.getString(1);
+                int startIndex = 2;
+
+                if ("destroy".equals(javaCallbackType))
+                {
+                    Java2JsCallback.remove(callbackId);
+                    return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 200, null);
+                } else
+                {
+                    Java2JsCallback java2JsCallback = Java2JsCallback.get(callbackId);
+                    if (java2JsCallback == null)
+                    {
+                        return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 500,
+                                "not found java2JsCallback(id=" + callbackId + ")");
+                    }
+                    switch (javaCallbackType)
+                    {
+                        case "setPermanent":
+                        {
+                            boolean isPermanent = argsVals.getBoolean(startIndex);
+                            java2JsCallback.setPermanent(isPermanent);
+                            return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 200, null);
+                        }
+
+                        case "callback":
+                        {
+                            values = new Object[argsVals.length() - startIndex];
+                            dealArgsTemp = dealArgs(webView, values, 0, methodName, argsTypes, argsVals, startIndex,
+                                    namespace);
+                            currMethod = java2JsCallback.getMethodClass(dealArgsTemp.sign);
+                        }
+                        break;
+                        default:
+                            return getReturn(Java2JsCallback.JAVA_CALLBACK, methodName, 500,
+                                    "unknown javaCallbackType(" + javaCallbackType + ")");
+                    }
+
+                }
+            } else
+            {
+                values = new Object[argsTypes.length() + 1];
+                values[0] = webView;
+                dealArgsTemp = dealArgs(webView, values, 1, methodName, argsTypes, argsVals, 0, namespace);
+                currMethod = methodsMap.get(namespace + "." + dealArgsTemp.sign);
+            }
+
+
+            String sign = dealArgsTemp.sign;
+            int numIndex = dealArgsTemp.numIndex;
+
+
+            // 方法匹配失败
+            if (currMethod == null)
+            {
+                return getReturn(jsonStr, null, 500,
+                        "not found method(" + (TextUtils
+                                .isEmpty(namespace) ? "" : namespace + ".") + sign + ") with valid parameters");
+            }
+            // 数字类型细分匹配
+            if (numIndex > 0)
+            {
+                Class[] methodTypes = currMethod.method.getParameterTypes();
+                int currIndex;
+                Class currCls;
+                while (numIndex > 0)
+                {
+                    currIndex = numIndex - numIndex / 10 * 10;
+                    currCls = methodTypes[currIndex];
+                    if (currCls == int.class)
+                    {
+                        values[currIndex] = argsVals.getInt(currIndex - 1);
+                    } else if (currCls == long.class)
+                    {
+                        //WARN: argsJson.getLong(k + defValue) will return a bigger incorrect number
+                        values[currIndex] = Long.parseLong(argsVals.getString(currIndex - 1));
+                    } else
+                    {
+                        values[currIndex] = argsVals.getDouble(currIndex - 1);
+                    }
+                    numIndex /= 10;
+                }
+            }
+
+            return getReturn(jsonStr, (TextUtils.isEmpty(namespace) ? "" : namespace + ".") + sign, 200,
+                    currMethod.method.invoke(currMethod.object, values));
+        } catch (Exception e)
+        {
+            if (willPrintDebugInfo)
+            {
+                e.printStackTrace();
+            }
+            //优先返回详细的错误信息
+            if (e.getCause() != null)
+            {
+                return getReturn(jsonStr, null, 500, "method execute error:" + e.getCause().getMessage());
+            }
+            return getReturn(jsonStr, null, 500, "method execute error:" + e.getMessage());
+        }
+
+    }
+
+    static class DealArgsTemp
+    {
+        String sign;
+        int numIndex = 0;
+
+        public DealArgsTemp(String sign, int numIndex)
+        {
+            this.sign = sign;
+            this.numIndex = numIndex;
+        }
+    }
+
+    /**
+     * 把js端传来的参数列表进行转换。
+     *
+     * @return sign
+     * @throws JSONException
+     */
+    private DealArgsTemp dealArgs(WEBView webView, Object[] values, int offset, String methodName, JSONArray argsTypes,
+            JSONArray argsVals, int offsetArgs, String namespace) throws JSONException
+
+    {
+        String sign = methodName;
+        int numIndex = 0;
+        String currType;
+        int len = argsTypes.length();
+        for (int m = offsetArgs; m < len; m++, offset++)
+        {
+            currType = argsTypes.optString(m);
+            if ("string".equals(currType))
+            {
+                sign += "_S";
+                values[offset] = argsVals.isNull(m) ? null : argsVals.getString(m);
+            } else if ("number".equals(currType))
+            {
+                sign += "_N";
+                numIndex = numIndex * 10 + m + 1;
+            } else if ("boolean".equals(currType))
+            {
+                sign += "_B";
+                values[offset] = argsVals.getBoolean(m);
+            } else if ("object".equals(currType))
+            {
+                sign += "_O";
+                JSONObject json = null;
+                if (!argsVals.isNull(m))
+                {
+                    json = argsVals.getJSONObject(m);
+                    json = parseObjFun(webView, namespace, json);
+                }
+                values[offset] = json;
+            } else if ("function".equals(currType))
+            {
+                sign += "_F";
+                values[offset] = new JsCallback(webView, namespace, argsVals.getString(m));
+            } else
+            {
+                sign += "_P";
+            }
+        }
+
+        return new DealArgsTemp(sign, numIndex);
+
     }
 
     private String getReturn(String reqJson, String callName, int stateCode, Object result)

@@ -50,10 +50,10 @@ public class WEBChromeClient extends WebChromeClient
     }
 
 
-    public WEBChromeClient(boolean autoInjectJS, boolean willPrintDebugInfo, boolean searchMoreForObjFun,
+    public WEBChromeClient(boolean autoInjectJS, boolean willPrintDebugInfo,
             JsCallJava.InjectObj... injectObjs)
     {
-        this(autoInjectJS, new JsCallJava(willPrintDebugInfo, searchMoreForObjFun, injectObjs));
+        this(autoInjectJS, new JsCallJava(willPrintDebugInfo, injectObjs));
     }
 
 

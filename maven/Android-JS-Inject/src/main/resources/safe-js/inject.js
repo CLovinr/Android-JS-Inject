@@ -110,7 +110,9 @@
 						break;
 					case "ATTR_VALUE_CHANGE_LISTENER":
 						obj.on("change", function() {
-							value($(this).val());
+							value({
+								"value":$(this).val()
+							});
 						});
 						break
 				}

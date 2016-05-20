@@ -9,7 +9,13 @@
     function ID(){
         return ""+_index++;
     }
-    
+
+
+    <HOST_APP_NAMESPACES>;
+    var callJava = null;
+    var namespace=<NAMESPACE>;
+
+    /*在传递对象到java层之前，转换里面的函数*/
     function parseObjFun(obj){
 		var robj={};
         for(var name in obj){
@@ -27,44 +33,73 @@
         }
         
         return robj;
-    }
+    };
+	function addJavaCallback(callbackId,isPermanent){
+			var callFun = function(){
+				var rs=	callJava.apply(<HOST_APP>,[true,<JAVA_CALLBACK>,callbackId,"callback"].concat(Array.prototype.slice.call(arguments, 0)));
+				return rs;
+			};
+			callFun.destroy=function(){
+				callJava.apply(<HOST_APP>,[true,<JAVA_CALLBACK>,callbackId,"destroy"]);
+			};
+			callFun.setPermanent=function(isPermanent){
+				callJava.apply(<HOST_APP>,[true,<JAVA_CALLBACK>,callbackId,"setPermanent",isPermanent?true:false]);
+			};
+			return callFun;
+	 };
+	var javaCallbackTag = <JAVA_CALLBACK>;
+	/*转换json对象中的指定格式的字符串（与某个java对象Java2JsCallback对应的）为js函数*/
+	function parseString2Fun(obj,isPermanent){
+	    var type = typeof obj;
+	    var returnObj=obj;
+		if(type==="string"&&obj.indexOf(javaCallbackTag)==0){/*java端的回调,从java端传递函数过来。*/
+			var index = javaCallbackTag.length;
+			var callbackId = obj.substr(index);
+			returnObj = addJavaCallback(callbackId,isPermanent);
+	     }else if(searchMore&&type==="object"&&obj!=null&&!(obj instanceof Array)){
+	        for(var x in obj){
+	            returnObj[x]=parseString2Fun(obj[x],isPermanent);
+	        }
+	     }
+	     return returnObj;
+	};
 
-   var callJava =  function (){
-                var args = Array.prototype.slice.call(arguments, 0);
-                var isJavaCallback=args.shift();
 
-                if (args.length < 1) {
-                    throw "<HOST_APP> call error, message:miss method name";
+     callJava =  function (){
+            var args = Array.prototype.slice.call(arguments, 0);
+            var isJavaCallback=args.shift();
+
+            if (args.length < 1) {
+                throw "<HOST_APP> call error, message:miss method name";
+            }
+            var aTypes = [];
+            for (var i = 1;i < args.length;i++) {
+                var arg = args[i];
+                var type = typeof arg;
+                aTypes[aTypes.length] = type;
+                if (type === "function") {
+                    var id =ID();
+                    <HOST_APP>.queue[id] = arg;
+                    args[i] = id;
+                }else if(type==="object"&&arg!==null){
+                    args[i] = parseObjFun(arg);
                 }
-                var aTypes = [];
-                for (var i = 1;i < args.length;i++) {
-                    var arg = args[i];
-                    var type = typeof arg;
-                    aTypes[aTypes.length] = type;
-                    if (type === "function") {
-                        var id =ID();
-                        <HOST_APP>.queue[id] = arg;
-                        args[i] = id;
-                    }else if(type==="object"&&arg!==null){
-                        args[i] = parseObjFun(arg);
-                    }
-                }
-                var res = JSON.parse(prompt(JSON.stringify({
-                    isJavaCallback:isJavaCallback,
-                    method: args.shift(),
-                    types: aTypes,
-                    args: args,
-                    namespace:namespace
-                })));
-                if (res.code != 200) {
-                    throw "<HOST_APP> call error, code:" + res.code + ", message:" + res.result;
-                }
-                return res.result;
-        };
+            }
+            var res = JSON.parse(prompt(JSON.stringify({
+                isJavaCallback:isJavaCallback,
+                method: args.shift(),
+                types: aTypes,
+                args: args,
+                namespace:isJavaCallback?"":namespace
+            })));
+            if (res.code != 200) {
+                throw "<HOST_APP> call error, code:" + res.code + ", message:" + res.result;
+            }
+            return res.result;
+    };
 
 
-    <HOST_APP_NAMESPACES>;
-    var namespace=<NAMESPACE>;
+
     <HOST_APP> = {
         queue: {},
         destroy:function(id){/*用于清除注册的函数*/
@@ -81,29 +116,8 @@
             var id = args.shift();
             var isPermanent = args.shift();
 
-            function addJavaCallback(callbackId){
-				var callFun = function(){
-					var rs=	callJava.apply(<HOST_APP>,[true,<JAVA_CALLBACK>,callbackId,"callback"].concat(Array.prototype.slice.call(arguments, 0)));
-					return rs;
-				};
-				callFun.destroy=function(){
-					callJava.apply(<HOST_APP>,[true,<JAVA_CALLBACK>,callbackId,"destroy"]);
-				};
-
-				callFun.setPermanent=function(isPermanent){
-					callJava.apply(<HOST_APP>,[true,<JAVA_CALLBACK>,callbackId,"setPermanent",isPermanent?true:false]);
-				};
-
-				return callFun;
-            };
-
             for(var i=0;i<args.length;i++){
-                var value = args[i];
-                if(typeof value==="string"&&value.indexOf(<JAVA_CALLBACK>)==0){/*java端的回调,从java端传递函数过来。*/
-					var index = <JAVA_CALLBACK>.length;
-					var callbackId = value.substr(index);
-					args[i]=addJavaCallback(callbackId);
-                }
+                args[i] = parseString2Fun(args[i],isPermanent);
             }
             this.queue[id].apply(this, args);
             if (!isPermanent) {

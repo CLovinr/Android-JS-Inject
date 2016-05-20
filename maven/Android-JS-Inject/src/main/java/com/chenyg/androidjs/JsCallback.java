@@ -70,15 +70,15 @@ public class JsCallback
         for (Object arg : args)
         {
             sb.append(",");
-            boolean isStrArg = arg instanceof String;
-            if (isStrArg)
-            {
-                sb.append("\"");
-            }
-            sb.append(String.valueOf(arg));
-            if (isStrArg)
-            {
-                sb.append("\"");
+
+            if(arg==null){
+                sb.append("null");
+            }else if(arg instanceof String){
+                sb.append('"').append(arg).append('"');
+            }else if(arg instanceof Java2JsCallback){
+                sb.append('"').append(arg.toString()).append('"');
+            }else{
+                sb.append(String.valueOf(arg));
             }
         }
         String execJs = String.format(CALLBACK_JS_FORMAT, namespace, id, isPermanent() ? 1 : 0, sb.toString());
