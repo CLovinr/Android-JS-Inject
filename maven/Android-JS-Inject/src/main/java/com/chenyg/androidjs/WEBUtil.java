@@ -2,7 +2,6 @@ package com.chenyg.androidjs;
 
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import com.chenyg.wporter.log.LogUtil;
 
 import java.lang.reflect.Method;
 
@@ -41,7 +40,7 @@ public class WEBUtil
             return m.invoke(obj, vals);
         } catch (Exception e)
         {
-            LogUtil.printErrPosLn(obj, ":", e);
+            System.out.println(e);
             return null;
         }
     }

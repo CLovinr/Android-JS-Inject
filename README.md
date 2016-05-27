@@ -21,7 +21,7 @@
 		new JsCallJava.InjectObj("chat.page.ui", Js.class,Js2.class,Js3.class)));
 
 ##基本用法-JavaScript(手动注入)
-1.在项目的[maven/Android-JS-Inject/src/main/resources目录](https://github.com/CLovinr/Android-JS-Inject/tree/master/maven/Android-JS-Inject/src/main/resources/safe-js)中有个我提供的用于注入的js文件inject.js,引入它到你的html页面中.该js文件中的jsBinderBridge部分是用于html的ui自动绑定功能部分的（是我的另一个开源项目UIBinder：支持Java、Android、Android-Html的UI绑定），暂时不用管它，不久整理出来后会有说明。
+1.在项目的[maven/Android-JS-Inject/src/main/resources目录](https://github.com/CLovinr/Android-JS-Inject/tree/master/maven/Android-JS-Inject/src/main/resources/safe-js)中有个我提供的用于注入的js文件inject.js,引入它到你的html页面中.
 
 2.以jquery为例：
 

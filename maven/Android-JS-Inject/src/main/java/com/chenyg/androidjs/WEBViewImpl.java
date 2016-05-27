@@ -12,10 +12,13 @@ public class WEBViewImpl implements WEBView
     private static ExecutorService executorService;
     public static String urlForInjectJsError;
 
+    // public WeakReference<WebView> webViewWeakReference;
+
     public WebView webView;
 
     public WEBViewImpl(WebView webView)
     {
+        //this.webViewWeakReference = new WeakReference<WebView>(webView);
         this.webView = webView;
         if (executorService == null)
         {
@@ -23,20 +26,30 @@ public class WEBViewImpl implements WEBView
         }
     }
 
+
+    private WebView webView()
+    {
+//        if(webViewWeakReference.get()==null){
+//            throw new RuntimeException("WebView has been recycled!");
+//        }
+//        return webViewWeakReference.get();
+        return webView;
+    }
+
     @Override
     public void loadUrl(final String url)
     {
         if (isMainThread())
         {
-            webView.loadUrl(url);
+            webView().loadUrl(url);
         } else
         {
-            webView.post(new Runnable()
+            webView().post(new Runnable()
             {
                 @Override
                 public void run()
                 {
-                    webView.loadUrl(url);
+                    webView().loadUrl(url);
                 }
             });
         }
@@ -45,13 +58,13 @@ public class WEBViewImpl implements WEBView
     @Override
     public Context getContext()
     {
-        return webView.getContext();
+        return webView().getContext();
     }
 
     @Override
     public void reloadForInjectJsFailed()
     {
-        webView.reload();
+        webView().reload();
     }
 
     @Override
@@ -77,7 +90,7 @@ public class WEBViewImpl implements WEBView
     @Override
     public String getCurrentUrl()
     {
-        return webView.getUrl();
+        return webView().getUrl();
     }
 
     @Override

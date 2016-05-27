@@ -325,8 +325,10 @@ public class JsCallJava
             }
             if ((obj instanceof String) && ((String) obj).startsWith(JSON_FUNCTION_STARTS))
             {
-                jobj.put(name,
-                        new JsCallback(view, namespace, ((String) obj).substring(JSON_FUNCTION_STARTS.length())));
+                JsCallback jsCallback =
+                        new JsCallback(view, namespace, ((String) obj).substring(JSON_FUNCTION_STARTS.length()));
+                jsCallback.isDebug = willPrintDebugInfo;
+                jobj.put(name, jsCallback);
             } else if ((obj instanceof JSONObject) && searchMoreForObjFun)
             {
                 jobj.put(name, parseObjFun(view, namespace, (JSONObject) obj));
@@ -514,11 +516,18 @@ public class JsCallJava
             } else if ("function".equals(currType))
             {
                 sign += "_F";
-                values[offset] = new JsCallback(webView, namespace, argsVals.getString(m));
+                JsCallback jsCallback = new JsCallback(webView, namespace, argsVals.getString(m));
+                jsCallback.isDebug = willPrintDebugInfo;
+                values[offset] = jsCallback;
             } else
             {
                 sign += "_P";
             }
+        }
+
+        if (willPrintDebugInfo)
+        {
+            Log.d(TAG, "sign=" + sign + ",method=" + methodName);
         }
 
         return new DealArgsTemp(sign, numIndex);

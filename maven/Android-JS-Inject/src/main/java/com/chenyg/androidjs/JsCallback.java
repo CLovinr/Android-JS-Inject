@@ -9,6 +9,8 @@
 package com.chenyg.androidjs;
 
 
+import android.util.Log;
+
 import java.lang.ref.WeakReference;
 
 /**
@@ -21,15 +23,17 @@ public class JsCallback
     private static final String DESTROY_JS_FORMAT = "javascript:%s.destroy(%s);";
     protected String id;
     private boolean couldGoOn;
-    protected WeakReference<WEBView> webViewRef;
+    protected WEBView webView;
     private boolean isPermanent = false;
     private String namespace;
+
+    protected boolean isDebug = false;
 
 
     public JsCallback(WEBView view, String namespace, String id)
     {
         couldGoOn = true;
-        webViewRef = new WeakReference<>(view);
+        webView = view;
         this.namespace = namespace;
         this.id = id;
     }
@@ -46,22 +50,22 @@ public class JsCallback
 
     public void destroy() throws JsCallbackException
     {
-        if (webViewRef.get() == null)
-        {
-            throw new JsCallbackException("the WebView related to the JsCallback has been recycled");
-        }
+//        if (webViewRef.get() == null)
+//        {
+//            throw new JsCallbackException("the WebView related to the JsCallback has been recycled");
+//        }
 
         String execJs = String.format(DESTROY_JS_FORMAT, namespace, id);
         //Log.d("JsCallBack", execJs);
-        webViewRef.get().loadUrl(execJs);
+        webView.loadUrl(execJs);
     }
 
     public void apply(Object... args) throws JsCallbackException
     {
-        if (webViewRef.get() == null)
-        {
-            throw new JsCallbackException("the WebView related to the JsCallback has been recycled");
-        }
+//        if (webViewRef.get() == null)
+//        {
+//            throw new JsCallbackException("the WebView related to the JsCallback has been recycled");
+//        }
         if (!couldGoOn)
         {
             throw new JsCallbackException("the JsCallback isn't permanent,cannot be called more than once");
@@ -71,19 +75,27 @@ public class JsCallback
         {
             sb.append(",");
 
-            if(arg==null){
+            if (arg == null)
+            {
                 sb.append("null");
-            }else if(arg instanceof String){
+            } else if (arg instanceof String)
+            {
                 sb.append('"').append(arg).append('"');
-            }else if(arg instanceof Java2JsCallback){
+            } else if (arg instanceof Java2JsCallback)
+            {
                 sb.append('"').append(arg.toString()).append('"');
-            }else{
+            } else
+            {
                 sb.append(String.valueOf(arg));
             }
         }
         String execJs = String.format(CALLBACK_JS_FORMAT, namespace, id, isPermanent() ? 1 : 0, sb.toString());
-        //Log.d("JsCallBack", execJs);
-        webViewRef.get().loadUrl(execJs);
+
+        if (isDebug)
+        {
+            Log.d("JsCallBack", execJs);
+        }
+        webView.loadUrl(execJs);
         couldGoOn = isPermanent();
     }
 

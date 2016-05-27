@@ -16,7 +16,6 @@ import java.util.Arrays;
 
 /**
  * 其中的onMy开头的方法是为了整合CrossWalk的XWalkView而准备的，目前已经有实现，不久有时间后整理出来。
- * Created by 宇宙之灵 on 2016/5/17.
  */
 public class WEBChromeClient extends WebChromeClient
 {
@@ -27,7 +26,7 @@ public class WEBChromeClient extends WebChromeClient
     private static final int MAX_TRY_INJECT_COUNT = 5;
     private int currentInjectCount = 0;
     private String lastUrl;
-    private ProgressBar progressBar;
+    protected ProgressBar progressBar;
     private String alertTitle = "alert";
 
     private static final String[] FOR_INJECT;

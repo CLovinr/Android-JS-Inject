@@ -90,7 +90,7 @@
                 method: args.shift(),
                 types: aTypes,
                 args: args,
-                namespace:isJavaCallback?"":namespace
+                namespace:namespace
             })));
             if (res.code != 200) {
                 throw "<HOST_APP> call error, code:" + res.code + ", message:" + res.result;
