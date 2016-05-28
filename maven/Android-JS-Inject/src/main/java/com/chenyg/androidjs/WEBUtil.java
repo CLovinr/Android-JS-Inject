@@ -3,6 +3,8 @@ package com.chenyg.androidjs;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 
 /**
@@ -42,6 +44,46 @@ public class WEBUtil
         {
             System.out.println(e);
             return null;
+        }
+    }
+
+    static String loadPackageJs(Class<?> c, String path, boolean isDebug) throws Exception
+    {
+        String content = read(c, path);
+        //除去注释,否则在某些平台上会出现错误。
+        content = content.replaceAll("//[^\\n]*", "");
+        content = content.replaceAll("/\\*[^/]*\\*/", "");
+        if (!isDebug)
+        {
+            content = content.replace("\n", "");
+        }
+        return content;
+    }
+
+    private static String read(Class<?> c, String path) throws Exception
+    {
+        InputStream in = null;
+        try
+        {
+            in = c.getResourceAsStream(path);
+            byte[] bs = new byte[in.available()];
+            in.read(bs);
+            return new String(bs, "utf-8");
+        } catch (Exception e)
+        {
+            throw e;
+        } finally
+        {
+            if (in != null)
+            {
+                try
+                {
+                    in.close();
+                } catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

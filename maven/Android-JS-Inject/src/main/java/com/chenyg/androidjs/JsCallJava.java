@@ -8,8 +8,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -17,8 +15,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
-import static android.R.attr.name;
 
 public class JsCallJava
 {
@@ -127,33 +123,34 @@ public class JsCallJava
             this.searchMoreForObjFun = true;
             this.willPrintDebugInfo = willPrintDebugInfo;
             methodsMap = new HashMap<>();
-            StringBuilder sbuilder = new StringBuilder("javascript:");
 
-            String tml = readTemplate();
+            final String testNamespace = "android_js_test";
 
-            //除去注释,否则在某些平台上会出现错误。
+            StringBuilder sbuilder = new StringBuilder("javascript:")
+                    .append("(function(window){")
+                    .append("if(window['" + testNamespace + "']){" + (willPrintDebugInfo ? "console.log('" +
+                            testNamespace + "')" : "") + ";return;}");//若已经注入成功了，则返回
 
-            tml = tml.replaceAll("//[^\\n]*", "");
-            tml = tml.replaceAll("/\\*[^/]*\\*/", "");
 
-            if (!willPrintDebugInfo)
-            {
-                tml = tml.replace("\n", "");
-            }
+            String tmlCommon = WEBUtil.loadPackageJs(getClass(), "/safe-js/js-java-safe-common.js", willPrintDebugInfo);
+            String tml = WEBUtil.loadPackageJs(getClass(), "/safe-js/js-java-safe.js", willPrintDebugInfo);
 
-            injectOne(sbuilder, new InjectObj("android_js_test", TestJs.class), tml);
+            injectOne(sbuilder, new InjectObj(testNamespace, TestJs.class), tmlCommon, true,testNamespace);
 
             for (InjectObj injectObj : injectObjs)
             {
-                injectOne(sbuilder, injectObj, tml);
+                injectOne(sbuilder, injectObj, tml, false,testNamespace);
             }
 
+            sbuilder.append("try{window._sendCmd_('<inject-ok>');}catch(e){}");
+            sbuilder.append("})(window);");
 
             preloadInterfaceJS = sbuilder.toString();
             if (willPrintDebugInfo)
             {
                 Log.w(TAG, "the whole js:length=" + preloadInterfaceJS.length());
                 Log.w(TAG, preloadInterfaceJS);
+                System.err.println(preloadInterfaceJS);
             }
         } catch (Exception e)
         {
@@ -167,34 +164,8 @@ public class JsCallJava
         return willPrintDebugInfo;
     }
 
-    private String readTemplate() throws Exception
-    {
-        InputStream in = null;
-        try
-        {
-            in = getClass().getResourceAsStream("/safe-js/my-js-java-safe.js");
-            byte[] bs = new byte[in.available()];
-            in.read(bs);
-            return new String(bs, "utf-8");
-        } catch (Exception e)
-        {
-            throw e;
-        } finally
-        {
-            if (in != null)
-            {
-                try
-                {
-                    in.close();
-                } catch (IOException e)
-                {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
 
-    private void injectOne(StringBuilder sbuilder, InjectObj injectObj, String tml) throws Exception
+    private void injectOne(StringBuilder sbuilder, InjectObj injectObj, String tml, boolean isCommon,String commonNamespace) throws Exception
     {
 
 
@@ -237,14 +208,23 @@ public class JsCallJava
         }
 
 
-        tml = tml.replace("<SEARCH_MORE>", String.valueOf(searchMoreForObjFun));
-        tml = tml.replace("<JAVA_CALLBACK>", "\"" + Java2JsCallback.JAVA_CALLBACK + "\"");
-        tml = tml.replace("<NAMESPACE>", "\"" + injectObj.namespace + "\"");
-        tml = tml.replace("<JSON_FUNCTION_STARTS>", JSON_FUNCTION_STARTS);
         tml = tml.replace("<LOG>", String.valueOf(willPrintDebugInfo));
-        tml = tml.replace("<HOST_APP>", injectObj.namespace);
-        tml = tml.replace("<HOST_APP_NAMESPACES>", namespaces);
-        tml = tml.replace("<HOST_APP_FUN>", smethods);
+
+        if (isCommon)
+        {
+            tml = tml.replace("<SEARCH_MORE>", String.valueOf(searchMoreForObjFun));
+            tml = tml.replace("<JSON_FUNCTION_STARTS>", JSON_FUNCTION_STARTS);
+            tml = tml.replace("<JAVA_CALLBACK>", "\"" + Java2JsCallback.JAVA_CALLBACK + "\"");
+            tml = tml.replace("<NAMESPACE_COMMON>", injectObj.namespace);
+            tml = tml.replace("<COMMON_NAMESPACES>", namespaces);
+        } else
+        {
+            tml = tml.replace("<NAMESPACE_COMMON>", commonNamespace);
+            tml = tml.replace("<NAMESPACE>", "\"" + injectObj.namespace + "\"");
+            tml = tml.replace("<HOST_APP>", injectObj.namespace);
+            tml = tml.replace("<HOST_APP_NAMESPACES>", namespaces);
+            tml = tml.replace("<HOST_APP_FUN>", smethods);
+        }
 
 
         if (willPrintDebugInfo)
@@ -283,7 +263,7 @@ public class JsCallJava
         String sign = needWEBViewAndMethodName ? method.getName() : "";
         Class[] argsTypes = method.getParameterTypes();
         int len = argsTypes.length;
-        if (needWEBViewAndMethodName && (len < 1 || !argsTypes[0].isAssignableFrom(WEBView.class)))
+        if (needWEBViewAndMethodName && (len < 1 || !WEBView.class.isAssignableFrom(argsTypes[0])))
         {
             if (willPrintDebugInfo)
             {

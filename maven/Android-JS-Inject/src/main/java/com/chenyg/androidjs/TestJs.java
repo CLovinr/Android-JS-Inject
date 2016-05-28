@@ -6,8 +6,6 @@ package com.chenyg.androidjs;
  */
 class TestJs
 {
-
-
     public void test(WEBView webView)
     {
     }

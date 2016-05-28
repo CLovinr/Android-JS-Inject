@@ -9,15 +9,27 @@
 		return;
 	}
 
+	window._sendCmd_=function(cmd){
+		sendCmd(cmd);
+	};
+
 	function sendCmd(cmd) {
 		if (injectDebug) {
 			console.log(cmd);
 		}
 		alert(cmd);
+		if(cmd=="<inject-ok>"){
+			if(typeof window["autoInjectReady"]=="function"){
+				try{window["autoInjectReady"]();}catch(e){}
+				window["autoInjectReady"]=null;
+			}
+			window.autoInjectOk=true;
+
+		}
 	}
 
 	window.injectReady = window.injectReady || function(isAutoInject, callback) {
-		var maxCount = 5;
+		var maxCount = 10;
 		var index = 0;
 
 		function check() {
