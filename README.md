@@ -3,6 +3,9 @@
 
 原始开源项目[Safe Java-JS WebView Bridge](https://github.com/pedant/safe-java-js-webview-bridge)
 
+
+[使用例子](http://blog.csdn.net/wosisuisiwo/article/details/51524463)
+
 ##基本用法-Android
 
 	 WebView webView = (WebView) findViewById(R.id.chat_webview);
