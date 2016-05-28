@@ -24,7 +24,7 @@ public abstract class Java2JsCallback extends JsCallback
 
     }
 
-    static final String JAVA_CALLBACK = "JavaCallback:";
+    public static final String JAVA_CALLBACK = "JavaCallback:";
 
     private static HashMap<String, Java2JsCallback> javaCallbackHashMap = new HashMap<>();
     private HashMap<String, JsCallJava.MethodClass> methodsMap;

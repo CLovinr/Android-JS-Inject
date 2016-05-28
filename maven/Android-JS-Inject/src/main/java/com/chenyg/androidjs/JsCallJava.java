@@ -18,11 +18,13 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import static android.R.attr.name;
+
 public class JsCallJava
 {
     private final static String TAG = "JsCallJava";
     private final static String RETURN_RESULT_FORMAT = "{\"code\": %d, \"result\": %s}";
-    private final static String JSON_FUNCTION_STARTS = "[function]=";
+    public final static String JSON_FUNCTION_STARTS = "[function]=";
     private HashMap<String, MethodClass> methodsMap;
 
     private String preloadInterfaceJS;
@@ -43,6 +45,9 @@ public class JsCallJava
     }
 
 
+    /**
+     * json对象中的字符串不能以{@linkplain #JSON_FUNCTION_STARTS}或{@linkplain Java2JsCallback#JAVA_CALLBACK}开头。
+     */
     public static class InjectObj
     {
         String namespace;
@@ -51,8 +56,10 @@ public class JsCallJava
         List<Object> interfaceObjects = new ArrayList<>();
 
         /**
+         * 对应的类必须含有无参构造函数。
+         *
          * @param namespace        命名空间
-         * @param interfaceClasses 必须含有无参构造函数.
+         * @param interfaceClasses 要注入的类，必须含有无参构造函数.
          */
         public InjectObj(String namespace, Class<?>... interfaceClasses)
         {
@@ -66,7 +73,7 @@ public class JsCallJava
 
         /**
          * @param namespace        命名空间
-         * @param interfaceObjects
+         * @param interfaceObjects 要注入的对象
          */
         public InjectObj(String namespace, Object... interfaceObjects)
         {
@@ -78,6 +85,11 @@ public class JsCallJava
             this.add(interfaceObjects);
         }
 
+        /**
+         * 添加注入对象。
+         *
+         * @param interfaceObjects 要注入的对象
+         */
         public InjectObj add(Object... interfaceObjects)
         {
             for (Object object : interfaceObjects)
@@ -88,6 +100,11 @@ public class JsCallJava
             return this;
         }
 
+        /**
+         * 添加要注入的类。
+         *
+         * @param interfaceClasses 必须含有无参构造函数。
+         */
         public InjectObj add(Class<?>... interfaceClasses)
         {
             for (Class<?> c : interfaceClasses)
@@ -100,8 +117,8 @@ public class JsCallJava
 
 
     /**
-     * @param willPrintDebugInfo
-     * @param injectObjs
+     * @param willPrintDebugInfo 是否打印调试信息。
+     * @param injectObjs         用于注入
      */
     public JsCallJava(boolean willPrintDebugInfo, InjectObj... injectObjs)
     {
@@ -292,6 +309,9 @@ public class JsCallJava
             } else if (cls == JSONObject.class)
             {
                 sign += "_O";
+            } else if (cls == JSONArray.class)
+            {
+                sign += "_A";
             } else if (cls == JsCallback.class)
             {
                 sign += "_F";
@@ -309,33 +329,50 @@ public class JsCallJava
     }
 
 
-    private JSONObject parseObjFun(WEBView view, String namespace, JSONObject json) throws JSONException
+    private Object parseObj(WEBView view, String namespace, Object obj) throws JSONException
     {
+        if (obj != null)
+        {
+            if ((obj instanceof String) && ((String) obj).startsWith(JSON_FUNCTION_STARTS))
+            {
+                JsCallback jsCallback =
+                        new JsCallback(view, namespace, (String) obj);
+                jsCallback.isDebug = willPrintDebugInfo;
+                obj = jsCallback;
+            } else if ((obj instanceof JSONObject) && searchMoreForObjFun)
+            {
+                parseJSON(view, namespace, (JSONObject) obj);
+            } else if ((obj instanceof JSONArray) && searchMoreForObjFun)
+            {
+                JSONArray array = (JSONArray) obj;
+                for (int i = 0; i < array.length(); i++)
+                {
+                    Object object = array.get(i);
+                    if (object != null)
+                        array.put(i, parseObj(view, namespace, object));
+                }
+            }
+        }
+        return obj;
+    }
 
+    private void parseJSONArray(WEBView view, String namespace, JSONArray array) throws JSONException
+    {
+        for (int i = 0; i < array.length(); i++)
+        {
+            array.put(i, parseObj(view, namespace, array.get(i)));
+        }
+    }
+
+    private void parseJSON(WEBView view, String namespace, JSONObject json) throws JSONException
+    {
         Iterator<String> names = json.keys();
-        JSONObject jobj = new JSONObject();
         while (names.hasNext())
         {
             String name = names.next();
             Object obj = json.get(name);
-            jobj.put(name, obj);
-            if (obj == null)
-            {
-                continue;
-            }
-            if ((obj instanceof String) && ((String) obj).startsWith(JSON_FUNCTION_STARTS))
-            {
-                JsCallback jsCallback =
-                        new JsCallback(view, namespace, ((String) obj).substring(JSON_FUNCTION_STARTS.length()));
-                jsCallback.isDebug = willPrintDebugInfo;
-                jobj.put(name, jsCallback);
-            } else if ((obj instanceof JSONObject) && searchMoreForObjFun)
-            {
-                jobj.put(name, parseObjFun(view, namespace, (JSONObject) obj));
-            }
+            json.put(name, parseObj(view, namespace, obj));
         }
-
-        return jobj;
     }
 
     public String call(WEBView webView, String jsonStr)
@@ -347,6 +384,11 @@ public class JsCallJava
         try
         {
             JSONObject callJson = new JSONObject(jsonStr);
+
+            if (willPrintDebugInfo)
+            {
+                Log.w(TAG, jsonStr);
+            }
 
             String namespace = callJson.getString("namespace");
             boolean isJavaCallback = callJson.getBoolean("isJavaCallback");
@@ -444,8 +486,9 @@ public class JsCallJava
                 }
             }
 
-            return getReturn(jsonStr, (TextUtils.isEmpty(namespace) ? "" : namespace + ".") + sign, 200,
+            String rs = getReturn(jsonStr, (TextUtils.isEmpty(namespace) ? "" : namespace + ".") + sign, 200,
                     currMethod.method.invoke(currMethod.object, values));
+            return rs;
         } catch (Exception e)
         {
             if (willPrintDebugInfo)
@@ -505,14 +548,24 @@ public class JsCallJava
                 values[offset] = argsVals.getBoolean(m);
             } else if ("object".equals(currType))
             {
-                sign += "_O";
-                JSONObject json = null;
+
+                Object obj = argsVals.get(m);
                 if (!argsVals.isNull(m))
                 {
-                    json = argsVals.getJSONObject(m);
-                    json = parseObjFun(webView, namespace, json);
+                    if (obj instanceof JSONArray)
+                    {
+                        sign += "_A";
+                        parseJSONArray(webView, namespace, (JSONArray) obj);
+                    } else if (obj instanceof JSONObject)
+                    {
+                        sign += "_O";
+                        parseJSON(webView, namespace, (JSONObject) obj);
+                    }
+                } else
+                {
+                    sign += "_O";
                 }
-                values[offset] = json;
+                values[offset] = obj;
             } else if ("function".equals(currType))
             {
                 sign += "_F";
@@ -563,7 +616,7 @@ public class JsCallJava
         String resStr = String.format(RETURN_RESULT_FORMAT, stateCode, insertRes);
         if (willPrintDebugInfo)
         {
-            Log.d(TAG, callName + " call json: " + reqJson + " result:" + resStr);
+            Log.w(TAG, "result:" + resStr);
         }
         ////////
         return resStr;

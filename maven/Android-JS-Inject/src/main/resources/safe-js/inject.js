@@ -2,33 +2,40 @@
 
 	var injectDebug = typeof window.injectDebug == "undefined" ? false : window.injectDebug;
 
+	var injectName = "android_js_test";
+
+	if (window[injectName]) {
+		sendCmd("<inject-ok>");
+		return;
+	}
+
+	function sendCmd(cmd) {
+		if (injectDebug) {
+			console.log(cmd);
+		}
+		alert(cmd);
+	}
+
 	window.injectReady = window.injectReady || function(isAutoInject, callback) {
 		var maxCount = 5;
 		var index = 0;
+
 		function check() {
-			if (window["android_js_test"]) {
-				if (injectDebug)
-					console.log("<inject-ok>");
-				alert("<inject-ok>");
+			if (window[injectName]) {
+				sendCmd("<inject-ok>");
 				callback(index);
 			} else if (index++ < maxCount) {
-				if (isAutoInject == "false") {
-					if (injectDebug)
-						console.log("<inject-js>");
-					alert("<inject-js>");
+				if (isAutoInject == "false"||!isAutoInject) {
+					sendCmd("<inject-js>");
 				}
 				setTimeout(check, 20);
 			} else {
-				if (injectDebug)
-					console.log("<inject-failed>")
-				alert("<inject-failed>");
+				sendCmd("<inject-failed>");
 			}
 		}
 		check();
 	};
 
-	if (injectDebug)
-		console.log("<inject-test>")
-	alert("<inject-test>");
+	sendCmd("<inject-test>");
 
 })(window);

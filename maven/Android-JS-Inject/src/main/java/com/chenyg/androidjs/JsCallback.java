@@ -19,8 +19,8 @@ import java.lang.ref.WeakReference;
 public class JsCallback
 {
 
-    private static final String CALLBACK_JS_FORMAT = "javascript:%s.callback(%s, %d %s);";
-    private static final String DESTROY_JS_FORMAT = "javascript:%s.destroy(%s);";
+    private static final String CALLBACK_JS_FORMAT = "javascript:%s.callback('%s', %d %s);";
+    private static final String DESTROY_JS_FORMAT = "javascript:%s.destroy('%s');";
     protected String id;
     private boolean couldGoOn;
     protected WEBView webView;
@@ -35,7 +35,7 @@ public class JsCallback
         couldGoOn = true;
         webView = view;
         this.namespace = namespace;
-        this.id = id;
+        this.id = id.substring(JsCallJava.JSON_FUNCTION_STARTS.length());
     }
 
     public boolean isPermanent()
@@ -93,7 +93,7 @@ public class JsCallback
 
         if (isDebug)
         {
-            Log.d("JsCallBack", execJs);
+            Log.w("JsCallBack", execJs);
         }
         webView.loadUrl(execJs);
         couldGoOn = isPermanent();

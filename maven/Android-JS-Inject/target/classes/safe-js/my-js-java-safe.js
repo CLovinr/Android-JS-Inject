@@ -15,24 +15,49 @@
     var callJava = null;
     var namespace=<NAMESPACE>;
 
+    function parseFun(fun){
+        var id =ID();
+        <HOST_APP>.queue[id] = fun;
+        return "<JSON_FUNCTION_STARTS>"+id;
+    }
+
+    function parseArrayFun(arr){
+        for(var i=0;i<arr.length;i++){
+        	arr[i]=parseObjFun(arr[i]);
+        }
+        return arr;
+    }
+
     /*在传递对象到java层之前，转换里面的函数*/
     function parseObjFun(obj){
-		var robj={};
-        for(var name in obj){
-            var arg=obj[name];
-            var type = typeof arg;
-            if(type==="function"){
-                var id =ID();
-                <HOST_APP>.queue[id] = arg;
-                robj[name]="<JSON_FUNCTION_STARTS>"+id;
-            }else if(searchMore&&type==="object"&&arg!==null&&!(arg instanceof Array)){
-                robj[name]=parseObjFun(arg);
-            }else{
-				robj[name]=arg;
-			}
+
+		if(typeof obj=="function"){
+			return parseFun(obj);
+		}
+		else if(obj instanceof Array){
+			return parseArrayFun(obj);
+		}
+		else{
+			var robj={};
+	        for(var name in obj){
+	            var arg=obj[name];
+	            var type = typeof arg;
+	            if(type==="function"){
+	                robj[name]=parseFun(arg);
+	            }else if(searchMore&&type==="object"&&arg!==null){
+	                if(arg instanceof Array){
+	                    robj[name]=parseArrayFun(arg);
+	                }else{
+	                    robj[name]=parseObjFun(arg);
+	                }
+
+	            }else{
+					robj[name]=arg;
+				}
+	        }
+	        return robj;
         }
-        
-        return robj;
+
     };
 	function addJavaCallback(callbackId,isPermanent){
 			var callFun = function(){
@@ -56,10 +81,17 @@
 			var index = javaCallbackTag.length;
 			var callbackId = obj.substr(index);
 			returnObj = addJavaCallback(callbackId,isPermanent);
-	     }else if(searchMore&&type==="object"&&obj!=null&&!(obj instanceof Array)){
-	        for(var x in obj){
-	            returnObj[x]=parseString2Fun(obj[x],isPermanent);
+	     }else if(searchMore&&type==="object"&&obj!=null){
+	        if(obj instanceof Array){
+	            for(var i=0;i<obj.length;i++){
+	                returnObj[i]=parseString2Fun(obj[i],isPermanent);
+	            }
+	        }else{
+	            for(var x in obj){
+            	     returnObj[x]=parseString2Fun(obj[x],isPermanent);
+            	}
 	        }
+
 	     }
 	     return returnObj;
 	};
@@ -77,11 +109,7 @@
                 var arg = args[i];
                 var type = typeof arg;
                 aTypes[aTypes.length] = type;
-                if (type === "function") {
-                    var id =ID();
-                    <HOST_APP>.queue[id] = arg;
-                    args[i] = id;
-                }else if(type==="object"&&arg!==null){
+                if (type === "function"||(type==="object"&&arg!==null)) {
                     args[i] = parseObjFun(arg);
                 }
             }

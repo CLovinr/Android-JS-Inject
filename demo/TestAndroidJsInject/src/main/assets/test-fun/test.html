@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>书呆子精神院</title>
+    <meta name="author" content="Yanyuetian">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1, target-densitydpi=medium-dpi, user-scalable=no">
+    <meta property="og:site_name" content="书呆子精神院"/>
+
+    <link href="../default.css" rel="stylesheet" type="text/css"/>
+
+    <script src="../jquery-2.2.3.min.js" type="text/javascript"></script>
+    <script src="../inject.js" type="text/javascript"></script>
+    <script type="text/javascript">
+    $(document).ready(function(){
+            console.log("ready!");
+            window.injectReady(false,function(){
+                demo.fun.toast('js已注入成功！');
+            });
+        });
+
+    </script>
+</head>
+
+<body>
+<div class="blog-header">
+    <h3>函数相关的测试</h3>
+</div>
+<ul class="entry">
+    <li>
+        js函数直接作为java函数参数<br/>
+        代码：<br/>
+        <div>
+            demo.fun.jsFun(function(){
+                alert('js函数直接作为java函数参数');
+            });
+        </div>
+        <button onclick="demo.fun.jsFun(function(){alert('js函数直接作为java函数参数');});">测试</button>
+    </li>
+
+    <br/>
+    <li>
+        js函数作为json对象的内部变量<br/>
+        代码：<br/>
+        <div>
+            demo.fun.jsFun({
+                'callback':function(){
+                     alert('js函数作为json对象的内部变量');
+                }
+            });
+        </div>
+        <button onclick="demo.fun.jsFun({'callback':function(){alert('js函数作为json对象的内部变量');}});">测试</button>
+    </li>
+
+    <br/>
+    <li>
+        js函数作为json数组的元素<br/>
+        代码：<br/>
+        <div>
+            demo.fun.jsFunArray([function(){
+                 alert('js函数作为json数组的元素');
+            }]);
+        </div>
+        <button onclick="demo.fun.jsFunArray([function(){alert('js函数作为json数组的元素');}]);">测试</button>
+    </li>
+
+    <br/>
+    <li>
+        js函数作为json对象的json数组的元素<br/>
+        代码：<br/>
+        <div>
+            demo.fun.jsFunArray({
+                'array':[function(){
+                    alert('js函数作为json对象的json数组的一个元素');
+                     }]
+            });
+        </div>
+        <button onclick="demo.fun.jsFunArray({'array':[function(){alert('js函数作为json对象的json数组的一个元素');}]});">测试</button>
+    </li>
+
+    <br/>
+    <li>
+        直接传递java函数对象<br/>
+        代码：<br/>
+        <div>
+            demo.fun.sendJavaFun(function(javaCall){
+                javaCall('直接传递java函数对象');
+            });
+        </div>
+        <button onclick="demo.fun.sendJavaFun(function(javaCall){javaCall('直接传递java函数对象');});">测试</button>
+    </li>
+
+    <br/>
+    <li>
+        java函数对象作为json对象的一个变量<br/>
+        代码：<br/>
+        <div>
+            demo.fun.sendJavaFunInJson(function(obj){
+                obj.callback('java函数对象作为json对象的一个变量');
+            });
+        </div>
+        <button onclick="demo.fun.sendJavaFunInJson(function(obj){obj.callback('java函数对象作为json对象的一个变量');});">测试
+        </button>
+    </li>
+</ul>
+
+</body>
+</html>
