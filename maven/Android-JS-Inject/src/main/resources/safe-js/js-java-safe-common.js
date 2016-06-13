@@ -1,25 +1,35 @@
-
-
+/**
+*通用代码.
+* 使用:
+* 1.var handleObj = NAMESPACE_COMMON = function(namespace,namespaceStr);
+* 2.HOST_APP_FUN handleObj.commonFunciton();
+* 3.handleObj.initOk();
+*/
 (function(global){
     var log=<LOG>;
     if(log)
         console.log("<NAMESPACE_COMMON> initialization begin");
     var _index=0;
-    var searchMore=<SEARCH_MORE>;/*是否递归搜索。若为否，则{f:function(){},obj:{f2:function(){}}}中只会转换函数f而f2不会被转换。*/
+    /*是否递归搜索。若为否，则{f:function(){},obj:{f2:function(){}}}中只会转换函数f而f2不会被转换。*/
+    var searchMore=<SEARCH_MORE>;
     function _ID(){
         return ""+_index++;
     }
-
-
     <COMMON_NAMESPACES>;
     var callJava = null;
 
-    function _parseFun(fun,callJavaObj){
+    /**
+     * 存储函数，并返回一个对应格式的字符串id。
+     */
+    function _function2Id(fun,callJavaObj){
         var id =_ID();
         callJavaObj.queue[id] = fun;
         return "<JSON_FUNCTION_STARTS>"+id;
     }
 
+	/**
+	 * 转换数组
+	 */
     function _parseArrayFun(arr,callJavaObj){
         for(var i=0;i<arr.length;i++){
         	arr[i]=_parseObjFun(arr[i],callJavaObj);
@@ -31,7 +41,7 @@
     function _parseObjFun(obj,callJavaObj){
 
 		if(typeof obj=="function"){
-			return _parseFun(obj,callJavaObj);
+			return _function2Id(obj,callJavaObj);
 		}
 		else if(obj instanceof Array){
 			return _parseArrayFun(obj,callJavaObj);
@@ -42,11 +52,12 @@
 	            var arg=obj[name];
 	            var type = typeof arg;
 	            if(type==="function"){
-	                robj[name]=_parseFun(arg,callJavaObj);
+	                robj[name]=_function2Id(arg,callJavaObj);
 	            }else if(searchMore&&type==="object"&&arg!==null){
 	                if(arg instanceof Array){
 	                    robj[name]=_parseArrayFun(arg,callJavaObj);
 	                }else{
+	                	/*递归*/
 	                    robj[name]=_parseObjFun(arg,callJavaObj);
 	                }
 
@@ -72,7 +83,12 @@
 			return callFun;
 	 };
 	var javaCallbackTag = <JAVA_CALLBACK>;
-	/*转换json对象中的指定格式的字符串（与某个java对象Java2JsCallback对应的）为js函数*/
+
+
+	/*
+	 * 转换json对象中的指定格式的字符串（与某个java对象Java2JsCallback对应的）为js函数.
+	 * 从java端传递动态函数过来，就是通过该处实现的。
+	 */
 	function parseString2Fun(obj,isPermanent,callJavaObj){
 	    var type = typeof obj;
 	    var returnObj=obj;
@@ -96,6 +112,10 @@
 	};
 
 
+	/**
+	 * 该函数的作用是：把调用的参数等转换成字符串传递的java层，并得到返回的结果。
+	 * ********************用于js端调用java接口************************
+	 */
      callJava =  function (){
             var args = Array.prototype.slice.call(arguments, 0);
             var callJavaObj = args.shift();
@@ -128,14 +148,16 @@
     };
 
 
-
+	/**
+	 * 每一个注入的java端的接口类，都对应一个对象（通过该函数返回的）
+	 */
     <NAMESPACE_COMMON> = function(namespace,namespaceStr){
-    	
+
 	    var returnObj =	 {
 	    	namespace:namespace,
 	    	namespaceStr:namespaceStr,
 	        queue: {},
-	        destroy:function(id){/*用于清除注册的函数*/
+	        destroy:function(id){/*用于清除注册的函数,对应于java端的destroy函数*/
 	            if(log){
 	                console.log("before delete function(id="+id+"):\n"+returnObj.queue[id]);
 	                delete returnObj.queue[id];
@@ -144,11 +166,14 @@
 	                delete returnObj.queue[id];
 	            }
 	        },
+	        /**
+	         * ********************用于java端调用js************************
+	         */
 	        callback: function () {/*对应于java端的apply函数*/
 	            var args = Array.prototype.slice.call(arguments, 0);
 	            var id = args.shift();
 	            var isPermanent = args.shift();
-	
+				args=args.shift();//params:Array
 	            for(var i=0;i<args.length;i++){
 	                args[i] = parseString2Fun(args[i],isPermanent,returnObj);
 	            }
@@ -157,16 +182,14 @@
 	                returnObj.destroy(id);
 	            }
 	        },
-	        commonFunciton:function(){
-	        	
-			    namespace.callback=returnObj.callback;
-			    namespace.destroy=returnObj.destroy;
+	        commonFunciton:function(){/*返回一个函数*/
 			    var commonFun= function () {
 			        return callJava.apply(namespace,[returnObj,namespaceStr,false].concat(Array.prototype.slice.call(arguments, 0)));
 			    };
-			   
+
 			    return commonFun;
-	        },initOk:function(){
+	        },initOk:function(){/*更改函数的行为*/
+
 	        	/*有时候，我们希望在该方法执行前插入一些其他的行为用来检查当前状态或是监测
 			    代码行为，这就要用到拦截（Interception）或者叫注入（Injection）技术了*/
 			    /**
@@ -179,13 +202,18 @@
 			     */
 			    Object.getOwnPropertyNames(namespace).forEach(function (property) {
 			        var original = namespace[property];
-			        if (typeof original === "function"&&property!=="callback"&&property!=="destroy") {
+			        if (typeof original === "function"
+			        			//&&property!=="callback"&&property!=="destroy"
+			        			) {
 			            namespace[property] = function () {
 			                return original.apply(namespace,  [property].concat(Array.prototype.slice.call(arguments, 0)));
 			            };
+
 			        }
-			        
+
 			    });
+			    namespace.callback=returnObj.callback;
+			    namespace.destroy=returnObj.destroy;
 	        }
 	    };
 	    

@@ -10,8 +10,7 @@ package com.chenyg.androidjs;
 
 
 import android.util.Log;
-
-import java.lang.ref.WeakReference;
+import org.json.JSONArray;
 
 /**
  * 用于java端调用js。
@@ -19,7 +18,7 @@ import java.lang.ref.WeakReference;
 public class JsCallback
 {
 
-    private static final String CALLBACK_JS_FORMAT = "javascript:%s.callback('%s', %d %s);";
+    private static final String CALLBACK_JS_FORMAT = "javascript:%s.callback('%s',%d,%s);";
     private static final String DESTROY_JS_FORMAT = "javascript:%s.destroy('%s');";
     protected String id;
     private boolean couldGoOn;
@@ -27,10 +26,9 @@ public class JsCallback
     private boolean isPermanent = false;
     private String namespace;
 
-    protected boolean isDebug = false;
 
 
-    public JsCallback(WEBView view, String namespace, String id)
+    JsCallback(WEBView view, String namespace, String id)
     {
         couldGoOn = true;
         webView = view;
@@ -70,31 +68,28 @@ public class JsCallback
         {
             throw new JsCallbackException("the JsCallback isn't permanent,cannot be called more than once");
         }
-        StringBuilder sb = new StringBuilder();
+        JSONArray params = new JSONArray();
+       // StringBuilder sb = new StringBuilder();
         for (Object arg : args)
         {
-            sb.append(",");
-
-            if (arg == null)
-            {
-                sb.append("null");
-            } else if (arg instanceof String)
-            {
-                sb.append('"').append(arg).append('"');
-            } else if (arg instanceof Java2JsCallback)
-            {
-                sb.append('"').append(arg.toString()).append('"');
-            } else
-            {
-                sb.append(String.valueOf(arg));
-            }
+            params.put(arg);
+//            sb.append(",");
+//
+//            if (arg == null)
+//            {
+//                sb.append("null");
+//            } else if (arg instanceof String)
+//            {
+//                sb.append('"').append(((String) arg).replace("\n","\\n")).append('"');
+//            } else if (arg instanceof Java2JsCallback)
+//            {
+//                sb.append('"').append(arg.toString()).append('"');
+//            } else
+//            {
+//                sb.append(String.valueOf(arg));
+//            }
         }
-        String execJs = String.format(CALLBACK_JS_FORMAT, namespace, id, isPermanent() ? 1 : 0, sb.toString());
-
-        if (isDebug)
-        {
-            Log.w("JsCallBack", execJs);
-        }
+        String execJs = String.format(CALLBACK_JS_FORMAT, namespace, id, isPermanent() ? 1 : 0, params.toString());
         webView.loadUrl(execJs);
         couldGoOn = isPermanent();
     }

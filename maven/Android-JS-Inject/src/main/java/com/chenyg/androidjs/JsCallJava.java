@@ -148,9 +148,8 @@ public class JsCallJava
             preloadInterfaceJS = sbuilder.toString();
             if (willPrintDebugInfo)
             {
-                Log.w(TAG, "the whole js:length=" + preloadInterfaceJS.length());
-                Log.w(TAG, preloadInterfaceJS);
-                System.err.println(preloadInterfaceJS);
+                Log.d(TAG, "the whole js:length=" + preloadInterfaceJS.length());
+                Log.d(TAG, preloadInterfaceJS);
             }
         } catch (Exception e)
         {
@@ -229,9 +228,9 @@ public class JsCallJava
 
         if (willPrintDebugInfo)
         {
-            Log.w(TAG, injectObj.namespace);
-            Log.w(TAG, namespaces.toString());
-            Log.w(TAG, smethods.toString());
+            Log.d(TAG, injectObj.namespace);
+            Log.d(TAG, namespaces.toString());
+            Log.d(TAG, smethods.toString());
         }
 
         sbuilder.append(tml);
@@ -267,7 +266,7 @@ public class JsCallJava
         {
             if (willPrintDebugInfo)
             {
-                Log.w(TAG, "method(" + sign + ")'s first parameter is not " + WEBView.class + ",ignored!");
+                Log.d(TAG, "method(" + sign + ")'s first parameter is not " + WEBView.class + ",ignored!");
             }
             return null;
         }
@@ -317,7 +316,6 @@ public class JsCallJava
             {
                 JsCallback jsCallback =
                         new JsCallback(view, namespace, (String) obj);
-                jsCallback.isDebug = willPrintDebugInfo;
                 obj = jsCallback;
             } else if ((obj instanceof JSONObject) && searchMoreForObjFun)
             {
@@ -550,7 +548,6 @@ public class JsCallJava
             {
                 sign += "_F";
                 JsCallback jsCallback = new JsCallback(webView, namespace, argsVals.getString(m));
-                jsCallback.isDebug = willPrintDebugInfo;
                 values[offset] = jsCallback;
             } else
             {
@@ -596,7 +593,7 @@ public class JsCallJava
         String resStr = String.format(RETURN_RESULT_FORMAT, stateCode, insertRes);
         if (willPrintDebugInfo)
         {
-            Log.w(TAG, "result:" + resStr);
+            Log.d(TAG, "result:" + resStr);
         }
         ////////
         return resStr;

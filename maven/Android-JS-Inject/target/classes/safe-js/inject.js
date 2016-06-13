@@ -32,6 +32,16 @@
 		var maxCount = 10;
 		var index = 0;
 
+
+		if(isAutoInject==="true"||isAutoInject===true){
+			if(window.autoInjectOk){
+				callback();
+			}else{
+				window["autoInjectReady"]=callback;
+			}
+			return;
+		}
+
 		function check() {
 			if (window[injectName]) {
 				sendCmd("<inject-ok>");

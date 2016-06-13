@@ -27,6 +27,12 @@ public class FunctionActivity extends Activity
             {
                 Toast.makeText(FunctionActivity.this, content, Toast.LENGTH_SHORT).show();
             }
+
+            @Callback//回调接口
+            public void callback(String title,String desc)
+            {
+                Toast.makeText(FunctionActivity.this, "标题:"+title+"\n描述：\n"+desc, Toast.LENGTH_SHORT).show();
+            }
         };
         java2JsCallback.setPermanent(true);
         String injectType = getIntent().getStringExtra("injectType");
