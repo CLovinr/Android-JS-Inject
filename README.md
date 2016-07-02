@@ -6,4 +6,4 @@
 原始开源项目[Safe Java-JS WebView Bridge](https://github.com/pedant/safe-java-js-webview-bridge)
 
 
-##[使用说明](http://CLovinr.github.io/demo/Android-JS-Inject/index.html)
+#[打开:使用说明](http://CLovinr.github.io/demo/Android-JS-Inject/index.html)
